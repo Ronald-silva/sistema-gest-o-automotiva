@@ -96,20 +96,25 @@ const Index = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <QuickAction
-                icon={Car}
-                text="Adicionar Novo Veículo"
-                to="/vehicles"
-              />
-              <QuickAction
-                icon={DollarSign}
-                text="Registrar Venda"
-              />
-              <QuickAction
-                icon={BarChart}
-                text="Ver Relatórios"
-              />
-            </CardContent>
+  <QuickAction
+    icon={Car}
+    text="Adicionar Novo Veículo"
+    to="/vehicles"
+  />
+  <QuickAction
+    icon={DollarSign}
+    text="Registrar nova Despesa"
+    to="/expenses/register" // Nova rota
+  />
+  <QuickAction
+    icon={DollarSign}
+    text="Registrar Venda"
+  />
+  <QuickAction
+    icon={BarChart}
+    text="Ver Relatórios"
+  />
+</CardContent>
           </Card>
 
           <Card className="h-fit">
