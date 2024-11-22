@@ -1,4 +1,3 @@
-// src/models/User.ts
 import mongoose, { Document, Model } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
@@ -9,6 +8,11 @@ export interface IUser extends Document {
   role: 'admin' | 'user';
   active: boolean;
   comparePassword(candidatePassword: string): Promise<boolean>;
+}
+
+// Add interface for static methods
+export interface UserModel extends Model<IUser> {
+  findByEmail(email: string): Promise<IUser | null>;
 }
 
 const userSchema = new mongoose.Schema({
@@ -41,18 +45,32 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Remove password from JSON responses
+userSchema.methods.toJSON = function() {
+  const userObject = this.toObject();
+  delete userObject.password;
+  return userObject;
+};
+
 // Hash password before saving
 userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-  
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
-  next();
+  try {
+    if (!this.isModified('password')) return next();
+    
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    return next();
+  } catch (error) {
+    return next(error);
+  }
 });
 
-// Method to check password
+userSchema.statics.findByEmail = function(email: string) {
+  return this.findOne({ email: email.toLowerCase() });
+};
+
 userSchema.methods.comparePassword = async function(candidatePassword: string): Promise<boolean> {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-export const User: Model<IUser> = mongoose.model<IUser>('User', userSchema);
+export const User = mongoose.model<IUser, UserModel>('User', userSchema);

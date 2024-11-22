@@ -23,7 +23,7 @@ export interface IVehicle extends Document {
   updatedAt: Date;
 }
 
-const vehicleSchema = new Schema({
+const vehicleSchema = new Schema<IVehicle>({
   model: {
     type: String,
     required: true,
@@ -53,16 +53,16 @@ const vehicleSchema = new Schema({
     trim: true,
   },
   details: {
-    km: Number,
-    fuel: String,
-    transmission: String,
-    features: [String],
+    km: { type: Number },
+    fuel: { type: String },
+    transmission: { type: String },
+    features: { type: [String] },
   },
   photos: [{
-    url: String,
+    url: { type: String, required: true },
     main: {
       type: Boolean,
-      default: false
+      default: false,
     }
   }],
   createdBy: {
@@ -71,7 +71,13 @@ const vehicleSchema = new Schema({
     required: true,
   }
 }, {
-  timestamps: true
+  timestamps: true,
 });
+
+// Índices
+vehicleSchema.index({ brand: 1, model: 1 });
+vehicleSchema.index({ status: 1 });
+vehicleSchema.index({ price: 1 });
+vehicleSchema.index({ createdBy: 1 });
 
 export const Vehicle = mongoose.model<IVehicle>('Vehicle', vehicleSchema);
