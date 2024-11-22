@@ -106,10 +106,16 @@ const Index = () => {
     text="Registrar nova Despesa"
     to="/expenses/register" // Nova rota
   />
-  <QuickAction
-    icon={DollarSign}
-    text="Registrar Venda"
-  />
+ <QuickAction
+  icon={DollarSign}
+  text="Registrar Venda"
+  to="/sales/register"  
+/>
+<QuickAction
+  icon={BarChart}
+  text="Histórico de Vendas"
+  to="/sales"
+/>
   <QuickAction
     icon={BarChart}
     text="Ver Relatórios"
