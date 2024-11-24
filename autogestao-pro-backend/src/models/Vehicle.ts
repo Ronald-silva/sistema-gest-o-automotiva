@@ -1,12 +1,21 @@
 // src/models/Vehicle.ts
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Types } from 'mongoose';
+import mongoosePaginate from 'mongoose-paginate-v2';
 
-export interface IVehicle extends Document {
-  model: string;
+// Enum para o status do veículo
+export enum VehicleStatus {
+  AVAILABLE = 'Disponível',
+  SOLD = 'Vendido',
+  MAINTENANCE = 'Em Manutenção',
+}
+
+// Interface Base
+export interface IVehicleBase {
+  vehicleModel: string; // Renomeado para evitar conflito com Mongoose
   brand: string;
   year: number;
   price: number;
-  status: 'Disponível' | 'Vendido' | 'Em Manutenção';
+  status: VehicleStatus;
   color: string;
   details?: {
     km?: number;
@@ -17,67 +26,150 @@ export interface IVehicle extends Document {
   photos: Array<{
     url: string;
     main: boolean;
+    _id?: Types.ObjectId | string;
   }>;
-  createdBy: mongoose.Types.ObjectId;
-  createdAt: Date;
-  updatedAt: Date;
+  documents?: Array<{
+    type: string;
+    name: string;
+    url: string;
+    _id?: Types.ObjectId | string;
+  }>;
+  createdBy: Types.ObjectId;
 }
 
-const vehicleSchema = new Schema<IVehicle>({
-  model: {
-    type: String,
-    required: true,
-    trim: true,
-  },
-  brand: {
-    type: String,
-    required: true,
-    trim: true,
-  },
-  year: {
-    type: Number,
-    required: true,
-  },
-  price: {
-    type: Number,
-    required: true,
-  },
-  status: {
-    type: String,
-    enum: ['Disponível', 'Vendido', 'Em Manutenção'],
-    default: 'Disponível',
-  },
-  color: {
-    type: String,
-    required: true,
-    trim: true,
-  },
-  details: {
-    km: { type: Number },
-    fuel: { type: String },
-    transmission: { type: String },
-    features: { type: [String] },
-  },
-  photos: [{
-    url: { type: String, required: true },
-    main: {
-      type: Boolean,
-      default: false,
-    }
-  }],
-  createdBy: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
-  }
-}, {
-  timestamps: true,
-});
+// Interface do Documento Mongoose
+export type IVehicle = IVehicleBase & Document;
 
-// Índices
-vehicleSchema.index({ brand: 1, model: 1 });
+// Interface para o Modelo Mongoose com Paginação
+interface VehicleModel extends mongoose.PaginateModel<IVehicle> {}
+
+// Schema do Mongoose
+const vehicleSchema = new Schema<IVehicle>(
+  {
+    vehicleModel: { // Usando vehicleModel para evitar conflito
+      type: String,
+      required: true,
+      trim: true,
+    },
+    brand: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    year: {
+      type: Number,
+      required: true,
+      min: 1900,
+      max: new Date().getFullYear() + 1, // Permite até o próximo ano
+    },
+    price: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    status: {
+      type: String,
+      enum: Object.values(VehicleStatus),
+      default: VehicleStatus.AVAILABLE,
+    },
+    color: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    details: {
+      km: {
+        type: Number,
+        min: 0,
+      },
+      fuel: {
+        type: String,
+        enum: ['Gasolina', 'Etanol', 'Flex', 'Diesel', 'Elétrico', 'Híbrido'],
+      },
+      transmission: {
+        type: String,
+        enum: ['Manual', 'Automático', 'CVT', 'Automatizado'],
+      },
+      features: [String],
+    },
+    photos: [
+      {
+        url: {
+          type: String,
+          required: true,
+        },
+        main: {
+          type: Boolean,
+          default: false,
+        },
+      },
+    ],
+    documents: [
+      {
+        type: {
+          type: String,
+          required: true,
+        },
+        name: {
+          type: String,
+          required: true,
+        },
+        url: {
+          type: String,
+          required: true,
+        },
+      },
+    ],
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+  },
+  {
+    timestamps: true, // Adiciona createdAt e updatedAt automaticamente
+  }
+);
+
+// Métodos do Documento
+vehicleSchema.methods.isAvailable = function (): boolean {
+  return this.status === VehicleStatus.AVAILABLE;
+};
+
+vehicleSchema.methods.setMainPhoto = function (photoId: string): void {
+  this.photos = this.photos.map(
+    (photo: { url: string; main: boolean; _id?: Types.ObjectId | string }) => ({
+      ...photo,
+      main: photo._id?.toString() === photoId,
+    })
+  );
+};
+
+vehicleSchema.methods.addPhotos = function (
+  newPhotos: Array<{ url: string; main: boolean }>
+): void {
+  this.photos = [...this.photos, ...newPhotos];
+};
+
+vehicleSchema.methods.removePhoto = function (photoId: string): void {
+  this.photos = this.photos.filter(
+    (photo: { url: string; main: boolean; _id?: Types.ObjectId | string }) =>
+      photo._id?.toString() !== photoId
+  );
+};
+
+// Índices para otimização
+vehicleSchema.index({ vehicleModel: 1, brand: 1 });
 vehicleSchema.index({ status: 1 });
 vehicleSchema.index({ price: 1 });
 vehicleSchema.index({ createdBy: 1 });
+vehicleSchema.index({ year: 1 });
 
-export const Vehicle = mongoose.model<IVehicle>('Vehicle', vehicleSchema);
+// Plugin de paginação
+vehicleSchema.plugin(mongoosePaginate);
+
+// Exportação do Modelo
+export const Vehicle = mongoose.model<IVehicle, VehicleModel>(
+  'Vehicle',
+  vehicleSchema
+);

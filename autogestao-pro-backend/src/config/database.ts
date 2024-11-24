@@ -1,4 +1,3 @@
-// src/config/database.ts
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 
@@ -6,7 +5,7 @@ dotenv.config();
 
 export const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI!);
+    const conn = await mongoose.connect(process.env.MONGODB_URI!); // Não é necessário passar opções
     console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
     console.error('Error connecting to MongoDB:', error);
@@ -14,6 +13,7 @@ export const connectDB = async () => {
   }
 };
 
+// Event listeners para monitorar o estado da conexão
 mongoose.connection.on('error', (err) => {
   console.error(`MongoDB connection error: ${err}`);
 });
@@ -22,6 +22,7 @@ mongoose.connection.on('disconnected', () => {
   console.warn('MongoDB disconnected');
 });
 
+// Fechar conexão ao encerrar o processo
 process.on('SIGINT', async () => {
   try {
     await mongoose.connection.close();

@@ -1,21 +1,22 @@
 {
-    "compilerOptions": {
-      "target": "es2018",
-      "module": "commonjs",
-      "lib": ["es2018", "esnext.asynciterable"],
-      "outDir": "./dist",
-      "rootDir": "./src",
-      "strict": true,
-      "esModuleInterop": true,
-      "skipLibCheck": true,
-      "forceConsistentCasingInFileNames": true,
-      "moduleResolution": "node",
-      "resolveJsonModule": true,
-      "experimentalDecorators": true,
-      "emitDecoratorMetadata": true,
-      "sourceMap": true,
-      "declaration": true
-    },
-    "include": ["src/**/*"],
-    "exclude": ["node_modules", "dist"]
-  }
+  "compilerOptions": {
+    "target": "es2022",                          // Suporte a funcionalidades modernas do JavaScript
+    "module": "commonjs",                        // Módulos para Node.js
+    "lib": ["es2022", "dom", "esnext.asynciterable"], // Suporte adicional para funcionalidades do DOM e async iterables
+    "outDir": "./dist",                          // Diretório de saída para arquivos compilados
+    "rootDir": "./src",                          // Diretório raiz dos arquivos de origem
+    "strict": true,                              // Habilita verificações estritas
+    "esModuleInterop": true,                     // Suporte para interoperação com módulos ES6
+    "skipLibCheck": true,                        // Evita verificar arquivos de definição de tipos
+    "forceConsistentCasingInFileNames": true,    // Garante que nomes de arquivos sejam case-sensitive
+    "moduleResolution": "node",                 // Resolve módulos no estilo Node.js
+    "resolveJsonModule": true,                   // Permite importar arquivos JSON
+    "experimentalDecorators": true,             // Suporte para decorators experimentais
+    "emitDecoratorMetadata": true,              // Gera metadados para decorators
+    "sourceMap": true,                           // Gera mapas de origem
+    "declaration": true,                         // Gera arquivos de declaração .d.ts
+    "typeRoots": ["./node_modules/@types", "./src/types"] // Diretórios de tipos personalizados
+  },
+  "include": ["src/**/*"],                       // Inclui todos os arquivos na pasta src
+  "exclude": ["node_modules", "dist"]            // Exclui node_modules e dist
+}

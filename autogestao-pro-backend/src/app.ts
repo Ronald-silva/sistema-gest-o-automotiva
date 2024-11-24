@@ -7,6 +7,7 @@ import { connectDB } from './config/database';
 import vehicleRoutes from './routes/vehicleRoutes';
 import transactionRoutes from './routes/transactionRoutes';
 import authRoutes from './routes/authRoutes';
+import saleRoutes from './routes/saleRoutes'; 
 
 const app = express();
 
@@ -21,11 +22,12 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/transactions', transactionRoutes);
+app.use('/api/sales', saleRoutes); // Adicionar rota de vendas
 
 // Error handling
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error(err.stack);
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'Erro interno do servidor',
     message: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
