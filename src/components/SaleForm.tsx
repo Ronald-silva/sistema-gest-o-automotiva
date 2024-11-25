@@ -5,9 +5,12 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 interface Vehicle {
-  id: string;
+  _id: string;
   model: string;
   brand: string;
   year: number;
@@ -46,23 +49,26 @@ export default function SaleForm() {
   });
 
   useEffect(() => {
-    // Carregar lista de veículos disponíveis
     fetchVehicles();
   }, []);
 
   const fetchVehicles = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/vehicles?status=Disponível');
-      if (!response.ok) throw new Error('Erro ao carregar veículos');
-      const data = await response.json();
-      setVehicles(data);
+      const response = await api.get('/vehicles', {
+        params: { status: 'Disponível' }
+      });
+      
+      if (response.data.docs) {
+        setVehicles(response.data.docs);
+      }
     } catch (error) {
       console.error('Erro ao carregar veículos:', error);
+      toast.error('Erro ao carregar veículos disponíveis.');
     }
   };
 
   const handleVehicleSelect = (vehicleId: string) => {
-    const vehicle = vehicles.find(v => v.id === vehicleId);
+    const vehicle = vehicles.find(v => v._id === vehicleId);
     if (vehicle) {
       setFormData(prev => ({
         ...prev,
@@ -77,19 +83,12 @@ export default function SaleForm() {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:3000/api/sales', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(formData)
-      });
-
-      if (!response.ok) throw new Error('Erro ao registrar venda');
-      navigate('/');
+      await api.post('/sales', formData);
+      toast.success('Venda registrada com sucesso!');
+      navigate('/sales');
     } catch (error) {
       console.error('Erro ao registrar venda:', error);
+      toast.error('Erro ao registrar venda. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -114,7 +113,7 @@ export default function SaleForm() {
             >
               <option value="">Selecione um veículo...</option>
               {vehicles.map((vehicle) => (
-                <option key={vehicle.id} value={vehicle.id}>
+                <option key={vehicle._id} value={vehicle._id}>
                   {`${vehicle.brand} ${vehicle.model} (${vehicle.year}) - R$ ${vehicle.price.toLocaleString()}`}
                 </option>
               ))}
@@ -234,7 +233,7 @@ export default function SaleForm() {
             <Button 
               variant="outline" 
               type="button" 
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/sales')}
               disabled={loading}
             >
               Cancelar
@@ -243,7 +242,14 @@ export default function SaleForm() {
               type="submit"
               disabled={loading}
             >
-              {loading ? 'Registrando...' : 'Registrar Venda'}
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Registrando...
+                </>
+              ) : (
+                'Registrar Venda'
+              )}
             </Button>
           </div>
         </form>

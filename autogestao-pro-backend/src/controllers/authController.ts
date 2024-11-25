@@ -6,68 +6,15 @@ import { validationResult } from 'express-validator';
 import bcrypt from 'bcryptjs';
 
 interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-    role: string;
-  };
+  user?: any;
 }
 
 export const authController = {
-  // Registro de usuário
-  async register(req: Request, res: Response) {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-      }
-
-      const { name, email, password, role = 'user' } = req.body;
-
-      // Verificar se o usuário já existe
-      const userExists = await User.findOne({ email });
-      if (userExists) {
-        return res.status(400).json({ error: 'Email já cadastrado' });
-      }
-
-      // Criar novo usuário
-      const user = new User({
-        name,
-        email,
-        password,
-        role,
-        active: true
-      });
-
-      await user.save();
-
-      // Gerar token
-      const token = jwt.sign(
-        { id: user._id, role: user.role },
-        process.env.JWT_SECRET || 'your-secret-key',
-        { expiresIn: '7d' }
-      );
-
-      res.status(201).json({
-        token,
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          role: user.role
-        }
-      });
-    } catch (error) {
-      console.error('Erro no registro:', error);
-      res.status(500).json({ 
-        error: 'Erro no servidor', 
-        details: error instanceof Error ? error.message : 'Unknown error' 
-      });
-    }
-  },
-
   // Login
   async login(req: Request, res: Response) {
     try {
+      console.log('Tentativa de login:', { email: req.body.email });
+      
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
@@ -76,14 +23,16 @@ export const authController = {
       const { email, password } = req.body;
 
       // Buscar usuário
-      const user = await User.findOne({ email, active: true });
+      const user = await User.findOne({ email });
       if (!user) {
+        console.log('Usuário não encontrado:', email);
         return res.status(401).json({ error: 'Credenciais inválidas' });
       }
 
       // Verificar senha
       const isMatch = await user.comparePassword(password);
       if (!isMatch) {
+        console.log('Senha incorreta para:', email);
         return res.status(401).json({ error: 'Credenciais inválidas' });
       }
 
@@ -93,6 +42,8 @@ export const authController = {
         process.env.JWT_SECRET || 'your-secret-key',
         { expiresIn: '7d' }
       );
+
+      console.log('Login bem-sucedido:', { email: user.email, role: user.role });
 
       res.json({
         token,
@@ -109,17 +60,75 @@ export const authController = {
     }
   },
 
+  // Registro
+  async register(req: Request, res: Response) {
+    try {
+      console.log('Tentativa de registro:', { 
+        email: req.body.email,
+        role: req.body.role 
+      });
+
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { name, email, password, role = 'user' } = req.body;
+
+      // Verificar se o usuário já existe
+      const userExists = await User.findOne({ email });
+      if (userExists) {
+        console.log('Email já cadastrado:', email);
+        return res.status(400).json({ error: 'Email já cadastrado' });
+      }
+
+      // Hash da senha
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(password, salt);
+
+      // Criar novo usuário
+      const user = new User({
+        name,
+        email,
+        password: hashedPassword,
+        role,
+        active: true
+      });
+
+      await user.save();
+
+      // Gerar token
+      const token = jwt.sign(
+        { id: user._id, role: user.role },
+        process.env.JWT_SECRET || 'your-secret-key',
+        { expiresIn: '7d' }
+      );
+
+      console.log('Registro bem-sucedido:', { email: user.email, role: user.role });
+
+      res.status(201).json({
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role
+        }
+      });
+    } catch (error) {
+      console.error('Erro no registro:', error);
+      res.status(500).json({ 
+        error: 'Erro no servidor',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  },
+
   // Obter usuário atual
   async getCurrentUser(req: AuthenticatedRequest, res: Response) {
     try {
-      if (!req.user?.id) {
-        return res.status(401).json({ error: 'Usuário não autenticado' });
-      }
-
-      const user = await User.findById(req.user.id)
-        .select('-password')
-        .select('-__v');
-
+      const user = await User.findById(req.user?.id).select('-password');
+      
       if (!user || !user.active) {
         return res.status(404).json({ error: 'Usuário não encontrado' });
       }
@@ -132,45 +141,48 @@ export const authController = {
       });
     } catch (error) {
       console.error('Erro ao buscar usuário:', error);
-      res.status(500).json({ error: 'Erro no servidor' });
+      res.status(500).json({ error: 'Erro ao buscar usuário' });
     }
   },
 
   // Atualizar perfil
   async updateProfile(req: AuthenticatedRequest, res: Response) {
     try {
-      if (!req.user?.id) {
-        return res.status(401).json({ error: 'Usuário não autenticado' });
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
       }
 
       const { name, email, currentPassword, newPassword } = req.body;
-      const user = await User.findById(req.user.id);
+      const user = await User.findById(req.user?.id);
 
       if (!user || !user.active) {
         return res.status(404).json({ error: 'Usuário não encontrado' });
       }
 
-      // Verificar email único se estiver mudando
+      // Verificar email único
       if (email && email !== user.email) {
         const emailExists = await User.findOne({ email, _id: { $ne: user._id } });
         if (emailExists) {
-          return res.status(400).json({ error: 'Email já está em uso' });
+          return res.status(400).json({ error: 'Este email já está em uso' });
         }
         user.email = email;
       }
 
-      // Atualizar nome se fornecido
+      // Atualizar nome
       if (name) {
         user.name = name;
       }
 
-      // Atualizar senha se fornecida
+      // Atualizar senha
       if (currentPassword && newPassword) {
         const isMatch = await user.comparePassword(currentPassword);
         if (!isMatch) {
           return res.status(400).json({ error: 'Senha atual incorreta' });
         }
-        user.password = newPassword;
+
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(newPassword, salt);
       }
 
       await user.save();
@@ -185,76 +197,7 @@ export const authController = {
       });
     } catch (error) {
       console.error('Erro ao atualizar perfil:', error);
-      res.status(500).json({ error: 'Erro no servidor' });
-    }
-  },
-
-  // Alterar senha
-  async changePassword(req: AuthenticatedRequest, res: Response) {
-    try {
-      if (!req.user?.id) {
-        return res.status(401).json({ error: 'Usuário não autenticado' });
-      }
-
-      const { currentPassword, newPassword } = req.body;
-      const user = await User.findById(req.user.id);
-
-      if (!user || !user.active) {
-        return res.status(404).json({ error: 'Usuário não encontrado' });
-      }
-
-      // Verificar senha atual
-      const isMatch = await user.comparePassword(currentPassword);
-      if (!isMatch) {
-        return res.status(400).json({ error: 'Senha atual incorreta' });
-      }
-
-      // Atualizar senha
-      user.password = newPassword;
-      await user.save();
-
-      res.json({ message: 'Senha alterada com sucesso' });
-    } catch (error) {
-      console.error('Erro ao alterar senha:', error);
-      res.status(500).json({ error: 'Erro no servidor' });
-    }
-  },
-
-  // Desativar conta
-  async deactivateAccount(req: AuthenticatedRequest, res: Response) {
-    try {
-      if (!req.user?.id) {
-        return res.status(401).json({ error: 'Usuário não autenticado' });
-      }
-
-      const user = await User.findById(req.user.id);
-      if (!user || !user.active) {
-        return res.status(404).json({ error: 'Usuário não encontrado' });
-      }
-
-      user.active = false;
-      await user.save();
-
-      res.json({ message: 'Conta desativada com sucesso' });
-    } catch (error) {
-      console.error('Erro ao desativar conta:', error);
-      res.status(500).json({ error: 'Erro no servidor' });
-    }
-  },
-
-  // Verificar token (útil para o frontend)
-  async verifyToken(req: AuthenticatedRequest, res: Response) {
-    try {
-      const token = req.header('Authorization')?.replace('Bearer ', '');
-      
-      if (!token) {
-        return res.status(401).json({ valid: false });
-      }
-
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-      res.json({ valid: true, decoded });
-    } catch (error) {
-      res.json({ valid: false });
+      res.status(500).json({ error: 'Erro ao atualizar perfil' });
     }
   }
 };

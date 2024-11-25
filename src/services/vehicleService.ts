@@ -40,6 +40,10 @@ class VehicleService {
     this.vehicles.splice(index, 1);
     return true;
   }
+
+  async getAvailableVehicles(): Promise<Vehicle[]> {
+    return this.vehicles.filter(vehicle => vehicle.status === 'Disponível');
+  }
 }
 
 export const vehicleService = new VehicleService();

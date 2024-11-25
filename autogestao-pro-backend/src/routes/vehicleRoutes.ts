@@ -1,3 +1,4 @@
+// routes/vehicleRoutes.ts
 import { Router } from 'express';
 import { vehicleController } from '../controllers/vehicleController';
 import { auth } from '../middlewares/auth';

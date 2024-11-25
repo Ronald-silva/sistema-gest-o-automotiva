@@ -2,15 +2,15 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { Vehicle } from '../types/vehicle';
 import { vehicleService } from '../services/vehicleService';
-import { toast } from '../hooks/use-toast';
+import { toast } from 'sonner';
 
 interface VehicleContextType {
   vehicles: Vehicle[];
   loading: boolean;
+  refreshVehicles: () => Promise<void>;
   addVehicle: (vehicle: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateVehicle: (id: number, vehicle: Partial<Vehicle>) => Promise<void>;
   deleteVehicle: (id: number) => Promise<void>;
-  refreshVehicles: () => Promise<void>;
 }
 
 const VehicleContext = createContext<VehicleContextType | undefined>(undefined);
@@ -31,57 +31,53 @@ export const VehicleProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, []);
 
-  const addVehicle = useCallback(async (vehicle: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addVehicle = useCallback(async (vehicleData: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-      setLoading(true);
-      await vehicleService.addVehicle(vehicle);
+      const newVehicle = await vehicleService.addVehicle(vehicleData);
+      setVehicles(prev => [...prev, newVehicle]);
       toast.success('Veículo adicionado com sucesso');
-      await refreshVehicles();
     } catch (error) {
       toast.error('Erro ao adicionar veículo');
-    } finally {
-      setLoading(false);
+      throw error;
     }
-  }, [refreshVehicles]);
+  }, []);
 
-  const updateVehicle = useCallback(async (id: number, vehicle: Partial<Vehicle>) => {
+  const updateVehicle = useCallback(async (id: number, vehicleData: Partial<Vehicle>) => {
     try {
-      setLoading(true);
-      await vehicleService.updateVehicle(id, vehicle);
-      toast.success('Veículo atualizado com sucesso');
-      await refreshVehicles();
+      const updatedVehicle = await vehicleService.updateVehicle(id, vehicleData);
+      if (updatedVehicle) {
+        setVehicles(prev => prev.map(vehicle => 
+          vehicle.id === id ? updatedVehicle : vehicle
+        ));
+        toast.success('Veículo atualizado com sucesso');
+      }
     } catch (error) {
       toast.error('Erro ao atualizar veículo');
-    } finally {
-      setLoading(false);
+      throw error;
     }
-  }, [refreshVehicles]);
+  }, []);
 
   const deleteVehicle = useCallback(async (id: number) => {
     try {
-      setLoading(true);
-      await vehicleService.deleteVehicle(id);
-      toast.success('Veículo removido com sucesso');
-      await refreshVehicles();
+      const success = await vehicleService.deleteVehicle(id);
+      if (success) {
+        setVehicles(prev => prev.filter(vehicle => vehicle.id !== id));
+        toast.success('Veículo removido com sucesso');
+      }
     } catch (error) {
       toast.error('Erro ao remover veículo');
-    } finally {
-      setLoading(false);
+      throw error;
     }
-  }, [refreshVehicles]);
-
-  React.useEffect(() => {
-    refreshVehicles();
-  }, [refreshVehicles]);
+  }, []);
 
   return (
     <VehicleContext.Provider value={{
       vehicles,
       loading,
+      refreshVehicles,
       addVehicle,
       updateVehicle,
-      deleteVehicle,
-      refreshVehicles
+      deleteVehicle
     }}>
       {children}
     </VehicleContext.Provider>
@@ -90,7 +86,7 @@ export const VehicleProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
 export const useVehicles = () => {
   const context = useContext(VehicleContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useVehicles must be used within a VehicleProvider');
   }
   return context;

@@ -10,8 +10,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 interface Sale {
   id: string;
@@ -40,7 +42,6 @@ export default function SalesList() {
   const navigate = useNavigate();
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchSales();
@@ -48,26 +49,23 @@ export default function SalesList() {
 
   const fetchSales = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/sales', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Erro ao carregar vendas');
-
-      const data = await response.json();
-      setSales(data);
-    } catch (err) {
-      setError('Erro ao carregar vendas');
-      console.error(err);
+      const response = await api.get('/sales');
+      setSales(response.data.docs || []);
+    } catch (error) {
+      console.error('Erro ao carregar vendas:', error);
+      toast.error('Erro ao carregar vendas');
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) return <div>Carregando...</div>;
-  if (error) return <div>Erro: {error}</div>;
+  if (loading) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="container py-8">
