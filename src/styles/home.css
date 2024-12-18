@@ -1,0 +1,19 @@
+/* ====================
+   Estilo da Página Home
+   ==================== */
+   .home-container {
+    text-align: center;
+    padding: 30px;
+    background-color: #f4f4f4;
+}
+
+.home-container h1 {
+    font-size: 2.5rem;
+    color: #007bff;
+}
+
+.home-container p {
+    font-size: 1.2rem;
+    margin-top: 10px;
+    color: #666;
+}
